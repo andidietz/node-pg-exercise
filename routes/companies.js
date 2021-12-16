@@ -1,4 +1,5 @@
 const express = require('express')
+const db = require('../db')
 const ExpressError = require('../expressError')
 const router = new express.Router()
 
@@ -13,7 +14,7 @@ router.get('/:code', async function(req, res, next) {
         const compResults = await db.query(
             `SELECT code, name, description
             FROM companies 
-            WHERE id=$1`, [req.params.code])
+            WHERE code=$1`, [req.params.code])
 
         const invoiceResults = await db.query(
             `SELECT id, comp_code, amt, paid, add_date, paid_date
@@ -21,8 +22,10 @@ router.get('/:code', async function(req, res, next) {
             WHERE comp_code = $1`,
             [req.params.code]
         )
-        
-        return res.json({company: compResults.rows[0]})
+        const companies = compResults.rows[0]
+        companies.invoices = invoiceResults.rows
+
+        return res.json({companies})
     } catch(err) {
         return next(err)
     }
@@ -63,12 +66,12 @@ router.put('/:code', async function(req, res, next) {
     }
 })
 
-router.delete('/:id', async function(req, res, next) {
+router.delete('/:code', async function(req, res, next) {
     try {
         const results = await db.query(
             `DELETE FROM companies WHERE code=$1
             RETURNING code`,
-            [req.params.id]
+            [req.params.code]
         )
 
         if (results.rows.length === 0) {
