@@ -1,4 +1,5 @@
 const express = require('express')
+const slugify = require('slugify')
 const db = require('../db')
 const ExpressError = require('../expressError')
 const router = new express.Router()
@@ -6,26 +7,33 @@ const router = new express.Router()
 router.get('/', async function(req, res) {
     const results = await db.query(`SELECT * FROM companies`)
 
-    return res.json({companies: results.rows})
+    return res.status(200).json({companies: results.rows})
 })
 
 router.get('/:code', async function(req, res, next) {
     try {
         const compResults = await db.query(
-            `SELECT code, name, description
-            FROM companies 
-            WHERE code=$1`, [req.params.code])
+            `SELECT c.code, c.name, c.description, i.code AS industries
+            FROM companies AS c
+            LEFT JOIN companies_industries AS ci
+            ON c.code = ci.company_code
+            LEFT JOIN industries AS i
+            ON ci.industry_code = i.code
+            WHERE c.code=$1`, [req.params.code])
 
+        const company = compResults.rows[0]
+        const industries = compResults.rows.map(row => row.industries)
+        company.industries = industries
+        
         const invoiceResults = await db.query(
             `SELECT id, comp_code, amt, paid, add_date, paid_date
             FROM invoices
             WHERE comp_code = $1`,
             [req.params.code]
         )
-        const companies = compResults.rows[0]
-        companies.invoices = invoiceResults.rows
+        company.invoices = invoiceResults.rows
 
-        return res.json({companies})
+        return res.status(200).json({company: company})
     } catch(err) {
         return next(err)
     }
@@ -33,8 +41,12 @@ router.get('/:code', async function(req, res, next) {
 
 router.post('/', async function(req, res, next) {
     try {
-        const { code, name, description } = req.body
-
+        const { name, description } = req.body
+        const code = slugify(name, {
+            replacement: '',
+            remove: `/[*+~.()'"!:@]/g}`,
+            lower: true
+        })
         const results = await db.query(
             `INSERT INTO companies (code, name, description)
             VALUES ($1, $2, $3)
@@ -78,7 +90,7 @@ router.delete('/:code', async function(req, res, next) {
             throw new ExpressError('Company not found', 404)
         }
 
-        return res.json({message: "Deleted"})
+        return res.status(200).json({message: "Deleted"})
     } catch(err) {
         return next(err)
     }
