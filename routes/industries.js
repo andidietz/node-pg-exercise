@@ -13,7 +13,6 @@ router.get("/", async function (req, res, next) {
                     LEFT JOIN companies as c
                     ON ci.company_code = c.code`,
         )
-
         return res.status(200).json({industries: industryResults.rows})
     } catch (err) {
         return next(err)
@@ -28,7 +27,6 @@ router.post('/', async function(req, res, next) {
             RETURNING code, industry`,
             [req.body.code, req.body.industry]
         )
-        
         return res.status(201).json({industry: results.rows[0]})
     } catch(err) {
         return next(err)
@@ -54,7 +52,6 @@ router.post('/:code', async function(req, res, next) {
                 WHERE i.code=$1`,
             [req.params.code]
         )
-
         return res.status(200).json({industry: results.rows})
     } catch(err) {
         return next(err)

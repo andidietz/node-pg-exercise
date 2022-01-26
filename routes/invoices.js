@@ -9,7 +9,6 @@ router.get('/', async function(req, res, next) {
             `SELECT id, comp_code, amt, paid, add_date, paid_date 
             FROM invoices`
         )
-
         return res.status(200).json({invoices: results.rows})
     } catch(err) {
         return next(err)
